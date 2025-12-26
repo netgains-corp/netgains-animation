@@ -3,253 +3,410 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Partikel Loading Screen - Advanced</title>
+    <title>Dr. Justus A. Wegner | Rechtsanwalt für Digitalrecht</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        /* Grundlegendes Styling für Vollbild */
-        body, html {
+        html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden; /* Keine Scrollbalken */
-            background-color: #050505; /* Sehr dunkler Hintergrund */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #050505; 
+            overflow-x: hidden;
+            color: #ffffff;
         }
 
-        /* Canvas (wo die 3D Grafik lebt) */
-        canvas {
-            display: block;
+        /* --- 3D Canvas Background --- */
+        #c {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* KORRIGIERT: Auf 0 gesetzt, damit es sichtbar ist */
+            pointer-events: none;
+        }
+
+        /* --- PREMIUM FROSTED GLASS EFFECT --- */
+        .glass-panel {
+            position: relative;
+            /* Basis-Hintergrund etwas transparenter für bessere Sichtbarkeit der Punkte */
+            background: rgba(20, 20, 25, 0.2); 
+            
+            /* Blur etwas reduziert, damit man die Punkte dahinter noch erahnen kann */
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            
+            box-shadow: 
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.15),     
+                inset 0 0 20px 0 rgba(255, 255, 255, 0.01),   
+                0 25px 50px -12px rgba(0, 0, 0, 0.8);         
+            
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            overflow: hidden; 
+        }
+
+        /* NOISE TEXTURE */
+        .glass-panel::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.07;
+            pointer-events: none;
+            z-index: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Reflektions-Verlauf (Shine) */
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(
+                125deg, 
+                rgba(255,255,255,0.1) 0%, 
+                rgba(255,255,255,0.01) 30%, 
+                rgba(255,255,255,0.00) 100%
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-5px);
+            background: rgba(40, 40, 50, 0.3);
+            box-shadow: 
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
+                0 35px 60px -15px rgba(0, 0, 0, 0.9);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Content Layer */
+        .glass-panel > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* --- Glass Button --- */
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.4);
         }
         
-        /* Ein kleiner Hinweis für den User */
-        #hint {
-            position: absolute;
-            bottom: 30px;
-            width: 100%;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.3);
-            pointer-events: none;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-size: 0.8rem;
+        .glass-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.6);
+            box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.5);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050505; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
         }
     </style>
 </head>
-<body>
+<body class="antialiased min-h-screen flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8 selection:bg-cyan-500 selection:text-white">
 
-    <div id="hint">Klicke für Explosion • Bewege die Maus</div>
+    <!-- 3D Particle Background Canvas -->
+    <canvas id="c"></canvas>
 
-    <!-- Einbindung von Three.js (der 3D Engine) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Main Content Container -->
+    <!-- Added relative position and z-10 to ensure it sits ON TOP of the canvas -->
+    <main class="w-full max-w-2xl space-y-6 relative z-10">
+
+        <!-- 1. MAIN IDENTITY CARD -->
+        <div class="glass-panel rounded-[2.5rem] p-8 md:p-10 flex flex-col md:flex-row items-center gap-8 text-center md:text-left relative group">
+            
+            <div class="relative shrink-0">
+                <div class="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-cyan-500/80 to-indigo-500/80 shadow-lg shadow-indigo-500/20">
+                    <!-- Profile Icon Placeholder -->
+                    <div class="w-full h-full rounded-full bg-slate-900/90 backdrop-blur-sm border-2 border-white/10 flex items-center justify-center text-slate-300 text-5xl md:text-6xl shadow-inner">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </div>
+                <div class="absolute bottom-2 right-2 w-5 h-5 bg-emerald-500 rounded-full border-4 border-[#050505] shadow-lg shadow-emerald-500/30" title="Verfügbar"></div>
+            </div>
+
+            <div class="flex-1">
+                <div class="inline-block px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-bold tracking-wide uppercase mb-3 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                    Rechtsanwalt & Notar
+                </div>
+                <h1 class="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight drop-shadow-md">Dr. Justus A. Wegner</h1>
+                <p class="text-slate-300 text-sm md:text-base leading-relaxed mb-6 font-medium">
+                    Spezialisiert auf Medienrecht, IP & digitales Wirtschaftsrecht. Ich schütze Ihr geistiges Eigentum und Ihre digitale Reputation.
+                </p>
+                
+                <div class="flex flex-wrap justify-center md:justify-start gap-3">
+                    <a href="#kontakt" class="glass-btn px-6 py-2.5 rounded-full text-sm font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-envelope"></i>
+                        Kontaktieren
+                    </a>
+                    <a href="#" class="glass-btn px-4 py-2.5 rounded-full text-sm font-semibold text-white/80 hover:text-white transition-colors" title="vCard Download">
+                        <i class="fa-solid fa-address-card"></i>
+                    </a>
+                    <a href="#" class="glass-btn px-4 py-2.5 rounded-full text-sm font-semibold text-white/80 hover:text-white transition-colors" title="LinkedIn">
+                        <i class="fa-brands fa-linkedin-in"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. STATUS / INFO BAR -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div class="glass-panel rounded-3xl p-4 text-center hover:bg-white/5 transition-colors cursor-default">
+                <div class="text-cyan-400 text-lg mb-1 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"><i class="fa-solid fa-location-dot"></i></div>
+                <div class="text-xs text-slate-300 uppercase font-bold tracking-wider">Standort</div>
+                <div class="text-sm font-semibold text-white mt-1">Berlin Mitte</div>
+            </div>
+            <div class="glass-panel rounded-3xl p-4 text-center hover:bg-white/5 transition-colors cursor-default">
+                <div class="text-indigo-400 text-lg mb-1 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]"><i class="fa-solid fa-scale-balanced"></i></div>
+                <div class="text-xs text-slate-300 uppercase font-bold tracking-wider">Fokus</div>
+                <div class="text-sm font-semibold text-white mt-1">Digitalrecht</div>
+            </div>
+            <div class="glass-panel rounded-3xl p-4 text-center hover:bg-white/5 transition-colors cursor-default col-span-2 md:col-span-1">
+                <div class="text-pink-400 text-lg mb-1 drop-shadow-[0_0_8px_rgba(244,114,182,0.5)]"><i class="fa-solid fa-clock"></i></div>
+                <div class="text-xs text-slate-300 uppercase font-bold tracking-wider">Erreichbarkeit</div>
+                <div class="text-sm font-semibold text-white mt-1">Mo-Fr 09:00 - 18:00</div>
+            </div>
+        </div>
+
+        <!-- 3. SERVICES GRID -->
+        <div class="glass-panel rounded-[2.5rem] p-8">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <span class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm border border-white/10"><i class="fa-solid fa-layer-group"></i></span>
+                Rechtsgebiete
+            </h2>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Service 1 -->
+                <div class="group p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all duration-300 cursor-pointer hover:-translate-y-1 shadow-lg shadow-black/5 hover:shadow-black/20">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="p-2 bg-indigo-500/20 rounded-lg text-indigo-300 group-hover:text-indigo-200 transition-colors border border-indigo-500/10">
+                            <i class="fa-solid fa-copyright"></i>
+                        </div>
+                        <i class="fa-solid fa-arrow-right -rotate-45 text-slate-500 text-xs group-hover:text-white group-hover:rotate-0 transition-all duration-300"></i>
+                    </div>
+                    <h3 class="font-bold text-white mb-1">Urheberrecht</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed font-medium">Schutz kreativer Werke, Lizenzen und Abwehr von Abmahnungen.</p>
+                </div>
+
+                <!-- Service 2 -->
+                <div class="group p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all duration-300 cursor-pointer hover:-translate-y-1 shadow-lg shadow-black/5 hover:shadow-black/20">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="p-2 bg-cyan-500/20 rounded-lg text-cyan-300 group-hover:text-cyan-200 transition-colors border border-cyan-500/10">
+                            <i class="fa-solid fa-globe"></i>
+                        </div>
+                        <i class="fa-solid fa-arrow-right -rotate-45 text-slate-500 text-xs group-hover:text-white group-hover:rotate-0 transition-all duration-300"></i>
+                    </div>
+                    <h3 class="font-bold text-white mb-1">IT-Recht & Datenschutz</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed font-medium">DSGVO-Compliance, AGB-Erstellung und Softwareverträge.</p>
+                </div>
+
+                <!-- Service 3 -->
+                <div class="group p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all duration-300 cursor-pointer hover:-translate-y-1 shadow-lg shadow-black/5 hover:shadow-black/20">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="p-2 bg-pink-500/20 rounded-lg text-pink-300 group-hover:text-pink-200 transition-colors border border-pink-500/10">
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </div>
+                        <i class="fa-solid fa-arrow-right -rotate-45 text-slate-500 text-xs group-hover:text-white group-hover:rotate-0 transition-all duration-300"></i>
+                    </div>
+                    <h3 class="font-bold text-white mb-1">Medienrecht</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed font-medium">Pressefreiheit, Persönlichkeitsrechte und Reputationsschutz.</p>
+                </div>
+
+                <!-- Service 4 -->
+                <div class="group p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all duration-300 cursor-pointer hover:-translate-y-1 shadow-lg shadow-black/5 hover:shadow-black/20">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="p-2 bg-emerald-500/20 rounded-lg text-emerald-300 group-hover:text-emerald-200 transition-colors border border-emerald-500/10">
+                            <i class="fa-solid fa-file-contract"></i>
+                        </div>
+                        <i class="fa-solid fa-arrow-right -rotate-45 text-slate-500 text-xs group-hover:text-white group-hover:rotate-0 transition-all duration-300"></i>
+                    </div>
+                    <h3 class="font-bold text-white mb-1">Start-up Beratung</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed font-medium">Gründung, Finanzierungsrunden und Mitarbeiterbeteiligungen.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. CONTACT SECTION -->
+        <div id="kontakt" class="glass-panel rounded-[2.5rem] p-8 md:p-10">
+            <h2 class="text-xl font-bold text-white mb-6 text-center">Mandat anfragen</h2>
+            
+            <form onsubmit="event.preventDefault(); alert('Dies ist eine Demo. Die Nachricht wurde nicht gesendet.');" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-300 ml-2 tracking-wide uppercase">Name</label>
+                        <input type="text" placeholder="Ihr Name" class="w-full px-4 py-3 rounded-xl glass-input placeholder-slate-400 focus:ring-2 focus:ring-cyan-500/50 transition-all font-medium">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-300 ml-2 tracking-wide uppercase">E-Mail</label>
+                        <input type="email" placeholder="ihre@email.de" class="w-full px-4 py-3 rounded-xl glass-input placeholder-slate-400 focus:ring-2 focus:ring-cyan-500/50 transition-all font-medium">
+                    </div>
+                </div>
+                
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-300 ml-2 tracking-wide uppercase">Anliegen</label>
+                    <textarea rows="4" placeholder="Beschreiben Sie kurz Ihr rechtliches Anliegen..." class="w-full px-4 py-3 rounded-xl glass-input placeholder-slate-400 focus:ring-2 focus:ring-cyan-500/50 transition-all resize-none font-medium"></textarea>
+                </div>
+
+                <button type="submit" class="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/30 transition-all transform hover:scale-[1.02] border border-white/10 relative overflow-hidden">
+                    <span class="relative z-10">Nachricht senden</span>
+                    <div class="absolute inset-0 bg-white/20 blur-md opacity-0 hover:opacity-100 transition-opacity"></div>
+                </button>
+            </form>
+
+            <div class="mt-8 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between text-xs text-slate-400 gap-4 font-medium">
+                <p>&copy; 2024 Dr. Justus A. Wegner</p>
+                <div class="flex gap-4">
+                    <a href="#" class="hover:text-white transition-colors">Impressum</a>
+                    <a href="#" class="hover:text-white transition-colors">Datenschutz</a>
+                </div>
+            </div>
+        </div>
+
+    </main>
 
     <script>
-        // --- KONFIGURATION ---
-        const PARTICLE_COUNT = 4500; // Mehr Partikel für die größere Kugel
-        const SPHERE_RADIUS = 250;   // Deutlich größer (war 100)
-        const PARTICLE_SIZE = 2.2;   // Etwas dickere Punkte
+    // IIFE für isolierten Scope - 3D Particle Wave
+    (function() {
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+
+        let w, h;
         
-        // --- SETUP ---
-        const scene = new THREE.Scene();
-        // Nebel etwas dichter und türkiser machen für mehr Atmosphäre
-        scene.fog = new THREE.FogExp2(0x001111, 0.0015);
-
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000);
-        // Kamera Position angepasst, damit die riesige Kugel gut wirkt, aber den Screen füllt
-        camera.position.z = 600;
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        // --- HAUPTKUGEL ---
-        const sphereGeometry = new THREE.BufferGeometry();
-        const spherePositions = [];
-        const originalPositions = []; 
+        function resize() {
+          w = canvas.width = window.innerWidth;
+          h = canvas.height = window.innerHeight;
+        }
         
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            const theta = THREE.MathUtils.randFloatSpread(360); 
-            const phi = THREE.MathUtils.randFloatSpread(360); 
-            const distance = SPHERE_RADIUS + Math.random() * 30 - 15; // Mehr Varianz in der Tiefe
+        window.addEventListener('resize', resize);
+        resize();
 
-            const x = distance * Math.sin(theta) * Math.cos(phi);
-            const y = distance * Math.sin(theta) * Math.sin(phi);
-            const z = distance * Math.cos(theta);
+        // ------------------------------
+        // CONFIG
+        // ------------------------------
+        const POINTS = 2500; 
+        const DEPTH = 1000;  
+        const FOV = 400;     
+        const WAVE_SPEED = 0.002; 
 
-            spherePositions.push(x, y, z);
-            originalPositions.push(x, y, z);
+        // ------------------------------
+        // PARTICLES INIT
+        // ------------------------------
+        const particles = [];
+        for (let i = 0; i < POINTS; i++) {
+          particles.push({
+            x: Math.random() * w, 
+            y: h / 2, 
+            z: Math.random() * DEPTH,
+            speed: (Math.random() * 0.5) + 0.5, 
+            offset: Math.random() * Math.PI * 2
+          });
         }
 
-        sphereGeometry.setAttribute('position', new THREE.Float32BufferAttribute(spherePositions, 3));
-        
-        const sphereMaterial = new THREE.PointsMaterial({ 
-            color: 0x00ffff, // Reines Cyan/Türkis
-            size: PARTICLE_SIZE,
-            transparent: true,
-            opacity: 0.9,
-            blending: THREE.AdditiveBlending
-        });
-
-        const sphere = new THREE.Points(sphereGeometry, sphereMaterial);
-        scene.add(sphere);
-
-        // --- RINGE (Mehr davon!) ---
-        const rings = []; // Array um alle Ringe zu speichern
-
-        function createRing(radius, count, inclinationX, inclinationZ, opacity) {
-            const ringGeo = new THREE.BufferGeometry();
-            const ringPos = [];
-            
-            for(let i=0; i<count; i++) {
-                const angle = (i / count) * Math.PI * 2;
-                const r = radius + (Math.random() - 0.5) * 15;
-                const x = Math.cos(angle) * r;
-                const y = (Math.random() - 0.5) * 8;
-                const z = Math.sin(angle) * r;
-                ringPos.push(x, y, z);
-            }
-            ringGeo.setAttribute('position', new THREE.Float32BufferAttribute(ringPos, 3));
-            
-            const ringMat = new THREE.PointsMaterial({
-                color: 0x40E0D0, // Türkis (Turquoise)
-                size: 1.8,
-                transparent: true,
-                opacity: opacity,
-                blending: THREE.AdditiveBlending
-            });
-            
-            const ring = new THREE.Points(ringGeo, ringMat);
-            ring.rotation.x = inclinationX;
-            ring.rotation.z = inclinationZ;
-            
-            scene.add(ring);
-            rings.push(ring); // Zum Animieren speichern
-            return ring;
+        // ------------------------------
+        // PROJEKTION
+        // ------------------------------
+        function project(p) {
+          const scale = FOV / (FOV + p.z);
+          return {
+            x: p.x, 
+            y: p.y,
+            r: scale * 4.5, 
+            a: Math.min(1, scale * 1.5) 
+          };
         }
 
-        // 5 Ringe erstellen mit verschiedenen Größen und Neigungen
-        createRing(320, 800, 0.2, 0.1, 0.6);
-        createRing(380, 900, -0.4, 0.2, 0.5);
-        createRing(450, 1000, 0.8, -0.3, 0.4);
-        createRing(520, 1100, -0.6, -0.5, 0.3);
-        createRing(600, 1200, 0.1, 0.8, 0.2); // Ganz außen
+        // ------------------------------
+        // ANIMATION
+        // ------------------------------
+        let tick = 0;
 
-        // --- STERNENHIMMEL ---
-        const starGeo = new THREE.BufferGeometry();
-        const starPos = [];
-        for(let i=0; i<3000; i++) { // Mehr Sterne
-            const x = THREE.MathUtils.randFloatSpread(3000);
-            const y = THREE.MathUtils.randFloatSpread(3000);
-            const z = THREE.MathUtils.randFloatSpread(3000);
-            starPos.push(x,y,z);
-        }
-        starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-        // Sterne auch leicht türkis anhauchen
-        const starMat = new THREE.PointsMaterial({ color: 0x008888, size: 1.2, transparent: true, opacity: 0.3 });
-        const starField = new THREE.Points(starGeo, starMat);
-        scene.add(starField);
-
-        // --- INTERAKTION ---
-        let mouseX = 0;
-        let mouseY = 0;
-        let targetX = 0;
-        let targetY = 0;
-        let explosionPower = 0; // Wie stark ist die Explosion gerade?
-
-        const windowHalfX = window.innerWidth / 2;
-        const windowHalfY = window.innerHeight / 2;
-
-        document.addEventListener('mousemove', (event) => {
-            mouseX = (event.clientX - windowHalfX) * 0.5;
-            mouseY = (event.clientY - windowHalfY) * 0.5;
-        });
-
-        // Klick-Event für Explosion
-        document.addEventListener('mousedown', () => {
-            explosionPower = 20; // Setzt Explosionskraft
-        });
-
-        // --- ANIMATION ---
-        // Hue Variable entfernt, da wir festes Türkis wollen
-        
         function animate() {
-            requestAnimationFrame(animate);
+          // Schwarzer Schleier für Trails - hier deckend genug für den Hintergrund
+          ctx.fillStyle = 'rgba(5, 5, 5, 0.25)'; 
+          ctx.fillRect(0, 0, w, h);
+          
+          // Additive Farbmischung für Glow
+          ctx.globalCompositeOperation = 'lighter';
 
-            // Pulsierende Helligkeit statt Farbwechsel
-            const time = Date.now() * 0.001;
-            // Kugel leicht pulsieren lassen in der Farbe
-            const sphereColorHSL = { h: 0.5, s: 1, l: 0.5 + Math.sin(time) * 0.1 }; 
-            sphere.material.color.setHSL(0.5, 1, 0.5 + Math.sin(time * 2) * 0.1); // Cyan HSL ist 0.5
+          tick += WAVE_SPEED;
 
-            // Mausbewegung glätten
-            targetX = mouseX * 0.001;
-            targetY = mouseY * 0.001;
+          for (const p of particles) {
+            // Bewegung
+            p.x += Math.cos(tick + p.offset) * 0.5;
 
-            // Rotationen
-            sphere.rotation.y += 0.002; // Langsamer da größer
-            sphere.rotation.x += 0.0005;
-            sphere.rotation.y += 0.03 * (targetX - sphere.rotation.y);
-            sphere.rotation.x += 0.03 * (targetY - sphere.rotation.x);
-
-            // Alle Ringe rotieren
-            rings.forEach((ring, index) => {
-                // Jeden Ring etwas anders drehen lassen
-                const speed = 0.001 + (index * 0.0005);
-                const direction = index % 2 === 0 ? 1 : -1;
-                ring.rotation.y += speed * direction;
-                ring.rotation.z += 0.0005 * direction;
-            });
-
-            // Hintergrund langsam drehen
-            starField.rotation.y += 0.0001;
-
-            // Explosion Logik
-            // Wenn Power da ist, fliegen Partikel nach außen. Wenn nicht, kehren sie zurück.
-            const positions = sphere.geometry.attributes.position.array;
+            // Wellen-Berechnung
+            const waveX = Math.sin((p.x * 0.002) + tick * 2 + p.offset * 0.2);
+            const waveZ = Math.cos((p.z * 0.003) + tick + p.offset);
             
-            // Explosion dämpfen
-            if (explosionPower > 0) {
-                explosionPower *= 0.94; 
-                if(explosionPower < 0.1) explosionPower = 0;
+            const amplitude = 150 + (Math.sin(tick * 0.5) * 50); 
+            
+            p.y = (h / 2) + (waveX + waveZ) * amplitude;
+
+            // Loop Logic
+            if (p.x < -100) p.x = w + 100;
+            if (p.x > w + 100) p.x = -100;
+            if (p.z < 0) p.z = DEPTH; 
+            if (p.z > DEPTH) p.z = 0;
+
+            const pr = project(p);
+            
+            if (pr.r > 0) {
+                ctx.beginPath();
+                ctx.fillStyle = `rgba(0, 255, 255, ${pr.a})`;
+                ctx.arc(pr.x, pr.y, pr.r, 0, Math.PI * 2);
+                ctx.fill();
             }
+          }
 
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                const ix = i * 3;
-                const iy = i * 3 + 1;
-                const iz = i * 3 + 2;
-
-                let tx = originalPositions[ix];
-                let ty = originalPositions[iy];
-                let tz = originalPositions[iz];
-
-                if (explosionPower > 0) {
-                    const blast = 1 + (explosionPower * 0.3); // Stärkere Explosion für größere Kugel
-                    positions[ix] += (tx * blast - positions[ix]) * 0.1;
-                    positions[iy] += (ty * blast - positions[iy]) * 0.1;
-                    positions[iz] += (tz * blast - positions[iz]) * 0.1;
-                } else {
-                    positions[ix] += (tx - positions[ix]) * 0.05;
-                    positions[iy] += (ty - positions[iy]) * 0.05;
-                    positions[iz] += (tz - positions[iz]) * 0.05;
-                }
-            }
-            sphere.geometry.attributes.position.needsUpdate = true;
-
-            // Pulsieren (Größe)
-            const scale = 1 + Math.sin(time * 0.5) * 0.03; // Langsameres, wuchtigeres Pulsieren
-            sphere.scale.set(scale, scale, scale);
-
-            renderer.render(scene, camera);
+          ctx.globalCompositeOperation = 'source-over';
+          
+          requestAnimationFrame(animate);
         }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
 
         animate();
-
+    })();
     </script>
 </body>
 </html>
